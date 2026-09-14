@@ -1,0 +1,23 @@
+tests/proxy/test_auth.py
+  s_6fff0cd57413e9::t_fcbdac14ec8be0 56-65
+src/local_mcp_gateway/proxy/app.py
+  s_6fff0cd57413e9::t_878c711f4157c1 16,24,50-59,67-78,119-120
+src/local_mcp_gateway/proxy/auth.py
+  s_6fff0cd57413e9::t_7add9313338576 20-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "015c419c2e6e366bb30652e48c41e875a424a1ab",
+  "prompts": {},
+  "sessions": {
+    "s_6fff0cd57413e9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c31676c4-5b7a-404f-8e3a-5eaad891e06a",
+        "model": "default"
+      },
+      "human_author": "Pedro Cantidio <ppcantidio@gmail.com>"
+    }
+  }
+}
