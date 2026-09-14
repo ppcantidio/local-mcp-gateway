@@ -1,0 +1,27 @@
+tests/proxy/test_sse.py
+  s_6fff0cd57413e9::t_c53551b960748a 13
+  s_6fff0cd57413e9::t_04cbd445301c61 1-12,14-20
+src/local_mcp_gateway/proxy/app.py
+  s_6fff0cd57413e9::t_fe7ca7741bb658 19,26-27,105-115,117-118,130-134,145-146
+  s_6fff0cd57413e9::t_9d1254f5e801fa 116,119-129
+tests/proxy/test_proxy.py
+  s_6fff0cd57413e9::t_d60572c7cd0f46 86-120
+src/local_mcp_gateway/proxy/sse.py
+  s_6fff0cd57413e9::t_18eeeea8933c0a 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3edc98bab255bd0f274be04118b60fbec9196a26",
+  "prompts": {},
+  "sessions": {
+    "s_6fff0cd57413e9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c31676c4-5b7a-404f-8e3a-5eaad891e06a",
+        "model": "default"
+      },
+      "human_author": "Pedro Cantidio <ppcantidio@gmail.com>"
+    }
+  }
+}
