@@ -12,6 +12,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
+from local_mcp_gateway import __version__
 from local_mcp_gateway.config import GatewayConfig
 from local_mcp_gateway.proxy.auth import authorization_failure_reason, is_authorized
 from local_mcp_gateway.proxy.headers import filter_request_headers, filter_response_headers
@@ -45,10 +46,16 @@ def create_app(
             yield
 
     async def healthz(_request: Request) -> JSONResponse:
-        return JSONResponse({"ok": True})
+        return JSONResponse(
+            {
+                "ok": True,
+                "version": __version__,
+                "sse_unwrap": True,
+            }
+        )
 
     async def root(_request: Request) -> JSONResponse:
-        return JSONResponse({"service": SERVICE_NAME})
+        return JSONResponse({"service": SERVICE_NAME, "version": __version__})
 
     async def no_oauth(_request: Request) -> JSONResponse:
         # Cursor probes these after a 401. We use static Bearer API keys, not OAuth.

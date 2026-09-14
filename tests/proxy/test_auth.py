@@ -17,14 +17,19 @@ def test_healthz_has_no_auth(paper_config: GatewayConfig) -> None:
     with _client(paper_config) as client:
         response = client.get("/healthz")
     assert response.status_code == 200
-    assert response.json() == {"ok": True}
+    body = response.json()
+    assert body["ok"] is True
+    assert body["sse_unwrap"] is True
+    assert "version" in body
 
 
 def test_root_has_no_auth(paper_config: GatewayConfig) -> None:
     with _client(paper_config) as client:
         response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"service": "local-mcp-gateway"}
+    body = response.json()
+    assert body["service"] == "local-mcp-gateway"
+    assert "version" in body
 
 
 def test_missing_api_key_is_401(paper_config: GatewayConfig) -> None:
