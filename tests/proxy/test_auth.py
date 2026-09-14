@@ -53,3 +53,13 @@ def test_unnamed_mcp_path_is_401_without_key(paper_config: GatewayConfig) -> Non
         response = client.post("/mcp", json={})
     assert response.status_code == 401
     assert response.json()["error"] == "unauthorized"
+    assert response.headers.get("www-authenticate", "").startswith("Bearer")
+
+
+def test_oauth_discovery_is_404_without_auth(paper_config: GatewayConfig) -> None:
+    with _client(paper_config) as client:
+        well_known = client.get("/.well-known/oauth-protected-resource/paper/mcp")
+        register = client.post("/register", json={})
+    assert well_known.status_code == 404
+    assert well_known.json()["error"] == "oauth_not_supported"
+    assert register.status_code == 404

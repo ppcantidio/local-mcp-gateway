@@ -13,7 +13,7 @@ from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
 from local_mcp_gateway.config import GatewayConfig
-from local_mcp_gateway.proxy.auth import is_authorized
+from local_mcp_gateway.proxy.auth import authorization_failure_reason, is_authorized
 from local_mcp_gateway.proxy.headers import filter_request_headers, filter_response_headers
 from local_mcp_gateway.proxy.routing import match_mcp
 
@@ -21,6 +21,7 @@ log = logging.getLogger("local_mcp_gateway")
 
 SERVICE_NAME = "local-mcp-gateway"
 UPSTREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)
+UNAUTHORIZED_HEADERS = {"WWW-Authenticate": 'Bearer realm="local-mcp-gateway"'}
 
 
 def create_app(
@@ -46,6 +47,16 @@ def create_app(
     async def root(_request: Request) -> JSONResponse:
         return JSONResponse({"service": SERVICE_NAME})
 
+    async def no_oauth(_request: Request) -> JSONResponse:
+        # Cursor probes these after a 401. We use static Bearer API keys, not OAuth.
+        return JSONResponse(
+            {
+                "error": "oauth_not_supported",
+                "message": "Authenticate with Authorization: Bearer <LMG_API_KEY>",
+            },
+            status_code=404,
+        )
+
     async def proxy(request: Request) -> Response:
         if not is_authorized(
             request,
@@ -53,7 +64,18 @@ def create_app(
             header=config.auth.header,
             prefix=config.auth.prefix,
         ):
-            return JSONResponse({"error": "unauthorized"}, status_code=401)
+            reason = authorization_failure_reason(
+                request,
+                api_key=api_key,
+                header=config.auth.header,
+                prefix=config.auth.prefix,
+            )
+            log.warning("unauthorized %s %s (%s)", request.method, request.url.path, reason)
+            return JSONResponse(
+                {"error": "unauthorized"},
+                status_code=401,
+                headers=UNAUTHORIZED_HEADERS,
+            )
 
         matched = match_mcp(request.url.path, config.mcp)
         if matched is None:
@@ -94,6 +116,8 @@ def create_app(
     routes = [
         Route("/healthz", healthz, methods=["GET", "HEAD"]),
         Route("/", root, methods=["GET", "HEAD"]),
+        Route("/.well-known/{path:path}", no_oauth, methods=["GET", "HEAD", "POST"]),
+        Route("/register", no_oauth, methods=["GET", "POST"]),
         Route(
             "/{path:path}",
             proxy,
