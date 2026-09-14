@@ -16,12 +16,15 @@ from local_mcp_gateway.config import GatewayConfig
 from local_mcp_gateway.proxy.auth import authorization_failure_reason, is_authorized
 from local_mcp_gateway.proxy.headers import filter_request_headers, filter_response_headers
 from local_mcp_gateway.proxy.routing import match_mcp
+from local_mcp_gateway.proxy.sse import is_event_stream, parse_sse_json_payload
 
 log = logging.getLogger("local_mcp_gateway")
 
 SERVICE_NAME = "local-mcp-gateway"
 UPSTREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)
 UNAUTHORIZED_HEADERS = {"WWW-Authenticate": 'Bearer realm="local-mcp-gateway"'}
+# Finite Streamable HTTP POST bodies (e.g. tools/list) — buffer then unwrap SSE→JSON.
+SSE_UNWRAP_MAX_BYTES = 8 * 1024 * 1024
 
 
 def create_app(
@@ -99,6 +102,36 @@ def create_app(
             log.warning("upstream request failed for %s %s", request.method, upstream_url)
             return JSONResponse({"error": "upstream_unavailable"}, status_code=502)
 
+        out_headers = filter_response_headers(resp.headers)
+        content_type = resp.headers.get("content-type")
+
+        # Cursor Cloud Agents discover tools more reliably from JSON than from
+        # SSE-framed Streamable HTTP POST bodies. Unwrap finite SSE→JSON.
+        if (
+            request.method in {"POST", "PUT", "PATCH"}
+            and resp.status_code == 200
+            and is_event_stream(content_type)
+        ):
+            try:
+                raw = await resp.aread()
+            finally:
+                await resp.aclose()
+            if len(raw) <= SSE_UNWRAP_MAX_BYTES:
+                payload = parse_sse_json_payload(raw)
+                if payload is not None:
+                    out_headers = {
+                        key: value
+                        for key, value in out_headers.items()
+                        if key.lower() != "content-type"
+                    }
+                    return JSONResponse(payload, status_code=200, headers=out_headers)
+            return Response(
+                content=raw,
+                status_code=resp.status_code,
+                headers=out_headers,
+                media_type=content_type,
+            )
+
         async def stream() -> AsyncIterator[bytes]:
             try:
                 async for chunk in resp.aiter_bytes():
@@ -109,8 +142,8 @@ def create_app(
         return StreamingResponse(
             stream(),
             status_code=resp.status_code,
-            headers=filter_response_headers(resp.headers),
-            media_type=resp.headers.get("content-type"),
+            headers=out_headers,
+            media_type=content_type,
         )
 
     routes = [

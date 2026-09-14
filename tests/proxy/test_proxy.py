@@ -83,3 +83,38 @@ def test_query_string_is_forwarded(paper_config: GatewayConfig) -> None:
         response = client.get("/paper/mcp", params={"session": "1"}, headers=AUTH)
     assert response.status_code == 200
     assert captured[0].url.params.get("session") == "1"
+
+
+def test_sse_post_is_unwrapped_to_json(paper_config: GatewayConfig) -> None:
+    sse = (
+        "event: message\n"
+        'data: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"open_file"}]}}\n'
+        "\n"
+    )
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=sse.encode(),
+            headers={
+                "content-type": "text/event-stream",
+                "mcp-session-id": "sess-unwrap",
+                "cache-control": "no-cache",
+            },
+        )
+
+    app = create_app(
+        paper_config,
+        api_key=TEST_API_KEY,
+        httpx_transport=httpx.MockTransport(handler),
+    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/paper/mcp",
+            json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+            headers=AUTH,
+        )
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.headers["mcp-session-id"] == "sess-unwrap"
+    assert response.json()["result"]["tools"][0]["name"] == "open_file"
