@@ -1,0 +1,31 @@
+README.md
+  s_6fff0cd57413e9::t_1c5bb7dc438f64 82-97,99
+plugins/paper/mcp.json
+  s_6fff0cd57413e9::t_63918be9ec5dc4 1-11
+plugins/paper/rules/ensure-gateway-running.mdc
+  s_6fff0cd57413e9::t_827a287e285675 1-16
+.cursor-plugin/marketplace.json
+  s_6fff0cd57413e9::t_7ffd00f94ba451 1-18
+plugins/paper/assets/logo.svg
+  s_6fff0cd57413e9::t_22205c251fb6cb 1-5
+plugins/paper/README.md
+  s_6fff0cd57413e9::t_ddc4b814aa0150 1-21
+plugins/paper/.cursor-plugin/plugin.json
+  s_6fff0cd57413e9::t_2834263590604c 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1bf6b2aa01f9a40c0a149d9cf5d0c05076255d64",
+  "prompts": {},
+  "sessions": {
+    "s_6fff0cd57413e9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c31676c4-5b7a-404f-8e3a-5eaad891e06a",
+        "model": "default"
+      },
+      "human_author": "Pedro Cantidio <ppcantidio@gmail.com>"
+    }
+  }
+}
