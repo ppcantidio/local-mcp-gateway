@@ -27,6 +27,28 @@ uv tool install .
 
 Requires Python 3.12+.
 
+### Upgrade (force)
+
+`uv tool install` does **not** restart a running `lmg serve`. Reinstall, then kill and start again:
+
+```bash
+cd ~/Developer/pessoal/local-mcp-gateway   # your clone
+git pull
+
+# wipe the installed tool and reinstall from this tree
+uv tool uninstall local-mcp-gateway || true
+uv tool install --force --reinstall .
+
+lmg --version    # expect 0.1.2+
+# Ctrl+C the old serve (or: pkill -f 'lmg serve')
+lmg serve --publisher tailscale --mode funnel
+
+curl -s http://127.0.0.1:8788/healthz
+# expect: {"ok":true,"version":"0.1.2","sse_unwrap":true}
+```
+
+If `lmg --version` is still old, check `which lmg` — another install (venv / old path) may be first on `PATH`.
+
 ## Quick start
 
 ```bash
