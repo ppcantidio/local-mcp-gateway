@@ -10,9 +10,9 @@
   },
   "plugins": [
     {
-      "name": "paper",
-      "source": "./plugins/paper",
-      "description": "Paper Desktop through local-mcp-gateway (Tailscale Funnel / Cloudflare / ngrok)."
+      "name": "paper-cloud-mcp",
+      "source": "./plugins/paper-cloud-mcp",
+      "description": "Paper Desktop for Cursor Cloud Agents via local-mcp-gateway (not the loopback Paper plugin)."
     }
   ]
 }

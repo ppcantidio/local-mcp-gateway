@@ -85,7 +85,7 @@ This repo is a **Team Marketplace**. Import it so Cloud Agents can use Paper ove
 
 1. Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → import  
    `https://github.com/ppcantidio/local-mcp-gateway`
-2. Install the **paper** plugin.
+2. Install the **paper-cloud-mcp** plugin (not the local Paper Desktop MCP).
 3. **Configure** variables (same fixed values as your laptop):
 
 | Variable | Example |
@@ -96,7 +96,7 @@ This repo is a **Team Marketplace**. Import it so Cloud Agents can use Paper ove
 4. Enable the MCP for Cloud Agents at [cursor.com/agents](https://cursor.com/agents).
 5. Keep `lmg serve` + Paper Desktop running on the Mac while agents work.
 
-Plugin sources live under `plugins/paper/` (manifest + `mcp.json`). Never commit API keys.
+Plugin sources live under `plugins/paper-cloud-mcp/` (manifest + `mcp.json`). Never commit API keys.
 
 ## Security
 

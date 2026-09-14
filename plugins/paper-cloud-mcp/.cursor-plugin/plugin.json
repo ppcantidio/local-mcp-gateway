@@ -1,8 +1,8 @@
 {
-  "name": "paper",
-  "displayName": "Paper (via local-mcp-gateway)",
+  "name": "paper-cloud-mcp",
+  "displayName": "Paper Cloud MCP",
   "version": "0.1.0",
-  "description": "Reach Paper Desktop from Cursor Cloud Agents through your local-mcp-gateway public HTTPS URL.",
+  "description": "Paper Desktop for Cursor Cloud Agents via local-mcp-gateway public HTTPS (distinct from the local Paper Desktop MCP on 127.0.0.1).",
   "author": {
     "name": "Pedro Cantidio",
     "email": "pedro@spryx.ai"
@@ -10,7 +10,7 @@
   "homepage": "https://github.com/ppcantidio/local-mcp-gateway",
   "repository": "https://github.com/ppcantidio/local-mcp-gateway",
   "license": "MIT",
-  "keywords": ["mcp", "paper", "design", "gateway", "tailscale"],
+  "keywords": ["mcp", "paper", "cloud", "design", "gateway", "tailscale"],
   "logo": "assets/logo.svg",
   "variables": {
     "type": "object",

@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "paper": {
+    "paper-cloud-mcp": {
       "type": "http",
       "url": "${LMG_PAPER_MCP_URL}",
       "headers": {

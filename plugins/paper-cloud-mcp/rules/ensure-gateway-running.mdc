@@ -1,11 +1,13 @@
 ---
-description: Remind agents that Paper via local-mcp-gateway needs the Mac gateway process and Paper Desktop running
+description: Remind agents that Paper Cloud MCP needs the Mac gateway process and Paper Desktop running
 alwaysApply: true
 ---
 
-# Paper via local-mcp-gateway
+# Paper Cloud MCP (local-mcp-gateway)
 
-This MCP reaches Paper Desktop through a **public HTTPS gateway** on the user's laptop (`lmg serve` + Tailscale Funnel / Cloudflare / ngrok).
+This MCP (`paper-cloud-mcp`) reaches Paper Desktop through a **public HTTPS gateway** on the user's laptop (`lmg serve` + Tailscale Funnel / Cloudflare / ngrok).
+
+It is **not** the local Paper Desktop plugin that talks to `127.0.0.1:29979`.
 
 If Paper tools fail (connection errors, 401, 502, timeouts):
 
