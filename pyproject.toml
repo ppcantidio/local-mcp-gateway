@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "local-mcp-gateway"
+dynamic = ["version"]
+description = "Expose localhost MCP servers with API-key auth via a pluggable tunnel."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Pedro Cantidio" }]
+keywords = ["mcp", "gateway", "proxy", "tailscale", "cloudflare", "ngrok"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Internet :: Proxy Servers",
+]
+dependencies = [
+  "typer>=0.12",
+  "rich>=13.7",
+  "pydantic>=2.6",
+  "pydantic-settings>=2.2",
+  "starlette>=0.38",
+  "uvicorn[standard]>=0.30",
+  "httpx>=0.27",
+]
+
+[project.urls]
+Homepage = "https://github.com/ppcantidio/local-mcp-gateway"
+Repository = "https://github.com/ppcantidio/local-mcp-gateway"
+
+[project.scripts]
+lmg = "local_mcp_gateway.cli:app"
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.6",
+  "ty>=0.0.18",
+]
+
+[tool.hatch.version]
+path = "src/local_mcp_gateway/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/local_mcp_gateway"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ty.environment]
+python = "./.venv"
+python-version = "3.12"
+root = ["./src", "."]

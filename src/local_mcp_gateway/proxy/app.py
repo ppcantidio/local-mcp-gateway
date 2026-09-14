@@ -1,0 +1,105 @@
+"""Starlette app: authenticated reverse proxy for Streamable HTTP / SSE."""
+
+from __future__ import annotations
+
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+import httpx
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response, StreamingResponse
+from starlette.routing import Route
+
+from local_mcp_gateway.config import GatewayConfig
+from local_mcp_gateway.proxy.auth import is_authorized
+from local_mcp_gateway.proxy.headers import filter_request_headers, filter_response_headers
+from local_mcp_gateway.proxy.routing import match_mcp
+
+log = logging.getLogger("local_mcp_gateway")
+
+SERVICE_NAME = "local-mcp-gateway"
+UPSTREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)
+
+
+def create_app(
+    config: GatewayConfig,
+    *,
+    api_key: str,
+    httpx_transport: httpx.AsyncBaseTransport | None = None,
+) -> Starlette:
+    @asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncIterator[None]:
+        async with httpx.AsyncClient(
+            timeout=UPSTREAM_TIMEOUT,
+            transport=httpx_transport,
+            follow_redirects=False,
+            trust_env=False,
+        ) as client:
+            app.state.http = client
+            yield
+
+    async def healthz(_request: Request) -> JSONResponse:
+        return JSONResponse({"ok": True})
+
+    async def root(_request: Request) -> JSONResponse:
+        return JSONResponse({"service": SERVICE_NAME})
+
+    async def proxy(request: Request) -> Response:
+        if not is_authorized(
+            request,
+            api_key=api_key,
+            header=config.auth.header,
+            prefix=config.auth.prefix,
+        ):
+            return JSONResponse({"error": "unauthorized"}, status_code=401)
+
+        matched = match_mcp(request.url.path, config.mcp)
+        if matched is None:
+            return JSONResponse({"error": "not_found"}, status_code=404)
+
+        server, rest = matched
+        upstream_url = f"{server.origin}{rest}"
+        headers = filter_request_headers(request.headers, server.host_header)
+        client: httpx.AsyncClient = request.app.state.http
+        body = await request.body()
+        req = client.build_request(
+            request.method,
+            upstream_url,
+            headers=headers,
+            content=body if body else None,
+            params=request.query_params,
+        )
+        try:
+            resp = await client.send(req, stream=True)
+        except httpx.RequestError:
+            log.warning("upstream request failed for %s %s", request.method, upstream_url)
+            return JSONResponse({"error": "upstream_unavailable"}, status_code=502)
+
+        async def stream() -> AsyncIterator[bytes]:
+            try:
+                async for chunk in resp.aiter_bytes():
+                    yield chunk
+            finally:
+                await resp.aclose()
+
+        return StreamingResponse(
+            stream(),
+            status_code=resp.status_code,
+            headers=filter_response_headers(resp.headers),
+            media_type=resp.headers.get("content-type"),
+        )
+
+    routes = [
+        Route("/healthz", healthz, methods=["GET", "HEAD"]),
+        Route("/", root, methods=["GET", "HEAD"]),
+        Route(
+            "/{path:path}",
+            proxy,
+            methods=["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"],
+        ),
+    ]
+    app = Starlette(routes=routes, lifespan=lifespan)
+    app.state.config = config
+    return app

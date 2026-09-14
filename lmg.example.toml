@@ -1,0 +1,17 @@
+# Copy to lmg.toml (`lmg init`) or ~/.config/lmg/config.toml.
+# API keys never go in this file — export LMG_API_KEY instead.
+
+listen = "127.0.0.1:8788"
+
+[auth]
+header = "authorization"
+prefix = "Bearer "
+
+[publisher]
+name = "local"              # local | tailscale | cloudflare | ngrok
+mode = "funnel"             # tailscale only: serve | funnel
+
+[[mcp]]
+name = "paper"
+url = "http://127.0.0.1:29979"
+rewrite_host = "127.0.0.1:29979"
