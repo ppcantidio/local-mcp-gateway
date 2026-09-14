@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import httpx
 from starlette.applications import Starlette
+from starlette.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
@@ -17,15 +19,19 @@ from local_mcp_gateway.config import GatewayConfig
 from local_mcp_gateway.proxy.auth import authorization_failure_reason, is_authorized
 from local_mcp_gateway.proxy.headers import filter_request_headers, filter_response_headers
 from local_mcp_gateway.proxy.routing import match_mcp
-from local_mcp_gateway.proxy.sse import is_event_stream, parse_sse_json_payload
+from local_mcp_gateway.proxy.sse import (
+    is_event_stream,
+    iter_with_sse_heartbeats,
+    parse_sse_json_payload,
+)
 
 log = logging.getLogger("local_mcp_gateway")
 
 SERVICE_NAME = "local-mcp-gateway"
-UPSTREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)
+UPSTREAM_TIMEOUT = httpx.Timeout(connect=15.0, read=None, write=30.0, pool=10.0)
 UNAUTHORIZED_HEADERS = {"WWW-Authenticate": 'Bearer realm="local-mcp-gateway"'}
 # Finite Streamable HTTP POST bodies (e.g. tools/list) — buffer then unwrap SSE→JSON.
-SSE_UNWRAP_MAX_BYTES = 8 * 1024 * 1024
+SSE_UNWRAP_MAX_BYTES = 16 * 1024 * 1024
 
 
 def create_app(
@@ -41,6 +47,7 @@ def create_app(
             transport=httpx_transport,
             follow_redirects=False,
             trust_env=False,
+            limits=httpx.Limits(max_keepalive_connections=20, keepalive_expiry=30.0),
         ) as client:
             app.state.http = client
             yield
@@ -51,6 +58,8 @@ def create_app(
                 "ok": True,
                 "version": __version__,
                 "sse_unwrap": True,
+                "get_sse_disabled": config.get_sse_disabled(),
+                "upstream_retries": config.proxy.upstream_retries,
             }
         )
 
@@ -91,24 +100,54 @@ def create_app(
         if matched is None:
             return JSONResponse({"error": "not_found"}, status_code=404)
 
+        # Long-lived idle GET SSE through Tailscale Funnel often surfaces as
+        # Cursor Cloud "fetch failed" / flaky live discovery. MCP clients must
+        # tolerate 405 and continue with POST-only Streamable HTTP.
+        if request.method == "GET" and config.get_sse_disabled():
+            return JSONResponse(
+                {
+                    "error": "get_sse_disabled",
+                    "message": (
+                        "GET SSE is disabled on this gateway (recommended for Funnel). "
+                        "Use POST Streamable HTTP."
+                    ),
+                },
+                status_code=405,
+                headers={"Allow": "POST"},
+            )
+
         server, rest = matched
         upstream_url = f"{server.origin}{rest}"
         headers = filter_request_headers(request.headers, server.host_header)
         client: httpx.AsyncClient = request.app.state.http
         body = await request.body()
-        req = client.build_request(
-            request.method,
-            upstream_url,
-            headers=headers,
-            content=body if body else None,
-            params=request.query_params,
-        )
-        try:
-            resp = await client.send(req, stream=True)
-        except httpx.RequestError:
-            log.warning("upstream request failed for %s %s", request.method, upstream_url)
-            return JSONResponse({"error": "upstream_unavailable"}, status_code=502)
 
+        attempts = 1 + max(0, config.proxy.upstream_retries)
+        resp: httpx.Response | None = None
+        for attempt in range(attempts):
+            req = client.build_request(
+                request.method,
+                upstream_url,
+                headers=headers,
+                content=body if body else None,
+                params=request.query_params,
+            )
+            try:
+                resp = await client.send(req, stream=True)
+                break
+            except httpx.RequestError:
+                log.warning(
+                    "upstream request failed for %s %s (attempt %s/%s)",
+                    request.method,
+                    upstream_url,
+                    attempt + 1,
+                    attempts,
+                )
+                if attempt + 1 >= attempts:
+                    return JSONResponse({"error": "upstream_unavailable"}, status_code=502)
+                await asyncio.sleep(0.05 * (attempt + 1))
+
+        assert resp is not None
         out_headers = filter_response_headers(resp.headers)
         content_type = resp.headers.get("content-type")
 
@@ -141,7 +180,13 @@ def create_app(
 
         async def stream() -> AsyncIterator[bytes]:
             try:
-                async for chunk in resp.aiter_bytes():
+                upstream = resp.aiter_bytes()
+                if is_event_stream(content_type) and config.proxy.sse_heartbeat_seconds > 0:
+                    upstream = iter_with_sse_heartbeats(
+                        upstream,
+                        interval_seconds=config.proxy.sse_heartbeat_seconds,
+                    )
+                async for chunk in upstream:
                     yield chunk
             finally:
                 await resp.aclose()
@@ -165,5 +210,6 @@ def create_app(
         ),
     ]
     app = Starlette(routes=routes, lifespan=lifespan)
+    app.add_middleware(GZipMiddleware, minimum_size=500)
     app.state.config = config
     return app

@@ -6,6 +6,7 @@ from local_mcp_gateway.config.models import (
     AuthConfig,
     GatewayConfig,
     McpServer,
+    ProxyConfig,
     PublisherConfig,
     parse_listen,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "AuthConfig",
     "GatewayConfig",
     "McpServer",
+    "ProxyConfig",
     "PublisherConfig",
     "RuntimeSecrets",
     "default_config_path",

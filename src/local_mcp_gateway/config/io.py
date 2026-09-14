@@ -35,6 +35,17 @@ def dumps_config(config: GatewayConfig) -> str:
     ]
     if config.publisher.mode:
         lines.append(f"mode = {_toml_str(config.publisher.mode)}")
+    proxy = config.proxy
+    lines.extend(
+        [
+            "",
+            "[proxy]",
+            f"sse_heartbeat_seconds = {proxy.sse_heartbeat_seconds:g}",
+            f"upstream_retries = {proxy.upstream_retries}",
+        ]
+    )
+    if proxy.disable_get_sse is not None:
+        lines.append(f"disable_get_sse = {'true' if proxy.disable_get_sse else 'false'}")
     for item in config.mcp:
         lines.extend(
             [

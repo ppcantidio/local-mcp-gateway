@@ -39,6 +39,32 @@ class PublisherConfig(BaseModel):
     mode: str | None = None
 
 
+class ProxyConfig(BaseModel):
+    """Tunables for Cloud Agent + tunnel reliability."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # None = auto (disabled for Tailscale Funnel). Long-lived idle GET SSE
+    # through Funnel is a common source of Cursor "fetch failed" / discovery flaps.
+    disable_get_sse: bool | None = None
+    sse_heartbeat_seconds: float = 15.0
+    upstream_retries: int = 2
+
+    @field_validator("sse_heartbeat_seconds")
+    @classmethod
+    def validate_heartbeat(cls, value: float) -> float:
+        if value < 0:
+            raise ValueError("sse_heartbeat_seconds must be >= 0 (0 disables heartbeats)")
+        return value
+
+    @field_validator("upstream_retries")
+    @classmethod
+    def validate_retries(cls, value: int) -> int:
+        if value < 0 or value > 5:
+            raise ValueError("upstream_retries must be between 0 and 5")
+        return value
+
+
 class McpServer(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -95,6 +121,7 @@ class GatewayConfig(BaseModel):
     listen: str = "127.0.0.1:8788"
     auth: AuthConfig = Field(default_factory=AuthConfig)
     publisher: PublisherConfig = Field(default_factory=PublisherConfig)
+    proxy: ProxyConfig = Field(default_factory=ProxyConfig)
     mcp: list[McpServer] = Field(default_factory=list)
 
     @field_validator("listen")
@@ -110,6 +137,11 @@ class GatewayConfig(BaseModel):
         if dupes:
             raise ValueError(f"duplicate MCP names: {', '.join(sorted(dupes))}")
         return self
+
+    def get_sse_disabled(self) -> bool:
+        if self.proxy.disable_get_sse is not None:
+            return self.proxy.disable_get_sse
+        return self.publisher.name == "tailscale" and (self.publisher.mode or "funnel") == "funnel"
 
     def server(self, name: str) -> McpServer:
         for item in self.mcp:

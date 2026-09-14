@@ -11,6 +11,13 @@ prefix = "Bearer "
 name = "local"              # local | tailscale | cloudflare | ngrok
 mode = "funnel"             # tailscale only: serve | funnel
 
+# Reliability knobs for Cloud Agents + public tunnels.
+# disable_get_sse defaults to true automatically when publisher=tailscale + mode=funnel.
+[proxy]
+# disable_get_sse = true
+sse_heartbeat_seconds = 15
+upstream_retries = 2
+
 [[mcp]]
 name = "paper"
 url = "http://127.0.0.1:29979"
