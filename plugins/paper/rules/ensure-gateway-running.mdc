@@ -1,0 +1,16 @@
+---
+description: Remind agents that Paper via local-mcp-gateway needs the Mac gateway process and Paper Desktop running
+alwaysApply: true
+---
+
+# Paper via local-mcp-gateway
+
+This MCP reaches Paper Desktop through a **public HTTPS gateway** on the user's laptop (`lmg serve` + Tailscale Funnel / Cloudflare / ngrok).
+
+If Paper tools fail (connection errors, 401, 502, timeouts):
+
+1. Confirm **Paper Desktop** is open with a file loaded (`http://127.0.0.1:29979/mcp`).
+2. Confirm **`lmg serve`** is running on the laptop (Funnel/public publisher, not `local`-only).
+3. Confirm plugin variables match the laptop: `LMG_API_KEY` and `LMG_PAPER_MCP_URL` (`https://<host>/paper/mcp`).
+
+Do not expect `127.0.0.1` Paper URLs to work from Cloud Agents — traffic must go through the published gateway URL.

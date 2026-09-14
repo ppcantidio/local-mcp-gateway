@@ -79,24 +79,24 @@ CLIs must already be on `PATH`. Missing binary errors include an install hint.
 
 **Tailscale stop:** `lmg` turns off the `--https=443` serve/funnel mapping it created. It does not wipe unrelated Tailscale serve routes; if you share port 443 with other mappings, stop carefully.
 
-## Cursor Cloud Agents (HTTP MCP)
+## Cursor plugin (Cloud Agents)
 
-Dashboard → Integrations & MCP (or your MCP JSON). Publisher must be **funnel / cloudflare / ngrok**, not tailscale `serve`:
+This repo is a **Team Marketplace**. Import it so Cloud Agents can use Paper over your public gateway.
 
-```json
-{
-  "mcpServers": {
-    "paper": {
-      "url": "https://<published-host>/paper/mcp",
-      "headers": {
-        "Authorization": "Bearer <LMG_API_KEY>"
-      }
-    }
-  }
-}
-```
+1. Dashboard → **Plugins** → **Team Marketplaces** → **Add Marketplace** → import  
+   `https://github.com/ppcantidio/local-mcp-gateway`
+2. Install the **paper** plugin.
+3. **Configure** variables (same fixed values as your laptop):
 
-Leave `lmg serve` running. Laptop asleep = MCP down.
+| Variable | Example |
+| --- | --- |
+| `LMG_PAPER_MCP_URL` | `https://laptop-de-pedro.tail0ee25d.ts.net/paper/mcp` |
+| `LMG_API_KEY` | value from `~/.config/lmg/env` |
+
+4. Enable the MCP for Cloud Agents at [cursor.com/agents](https://cursor.com/agents).
+5. Keep `lmg serve` + Paper Desktop running on the Mac while agents work.
+
+Plugin sources live under `plugins/paper/` (manifest + `mcp.json`). Never commit API keys.
 
 ## Security
 

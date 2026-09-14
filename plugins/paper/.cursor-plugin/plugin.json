@@ -1,0 +1,33 @@
+{
+  "name": "paper",
+  "displayName": "Paper (via local-mcp-gateway)",
+  "version": "0.1.0",
+  "description": "Reach Paper Desktop from Cursor Cloud Agents through your local-mcp-gateway public HTTPS URL.",
+  "author": {
+    "name": "Pedro Cantidio",
+    "email": "pedro@spryx.ai"
+  },
+  "homepage": "https://github.com/ppcantidio/local-mcp-gateway",
+  "repository": "https://github.com/ppcantidio/local-mcp-gateway",
+  "license": "MIT",
+  "keywords": ["mcp", "paper", "design", "gateway", "tailscale"],
+  "logo": "assets/logo.svg",
+  "variables": {
+    "type": "object",
+    "properties": {
+      "LMG_PAPER_MCP_URL": {
+        "type": "string",
+        "title": "Paper MCP URL",
+        "description": "Public HTTPS URL printed by `lmg serve` (…/paper/mcp).",
+        "default": "https://laptop-de-pedro.tail0ee25d.ts.net/paper/mcp"
+      },
+      "LMG_API_KEY": {
+        "type": "string",
+        "title": "Gateway API key",
+        "description": "Same fixed Bearer token as LMG_API_KEY on the machine running `lmg serve`."
+      }
+    },
+    "required": ["LMG_API_KEY", "LMG_PAPER_MCP_URL"]
+  },
+  "mcpServers": "./mcp.json"
+}

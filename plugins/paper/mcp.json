@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "paper": {
+      "type": "http",
+      "url": "${LMG_PAPER_MCP_URL}",
+      "headers": {
+        "Authorization": "Bearer ${LMG_API_KEY}"
+      }
+    }
+  }
+}
