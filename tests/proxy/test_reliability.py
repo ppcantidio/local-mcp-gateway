@@ -10,9 +10,30 @@ from tests.conftest import TEST_API_KEY
 AUTH = {"Authorization": f"Bearer {TEST_API_KEY}"}
 
 
-def test_funnel_auto_disables_get_sse(paper_config: GatewayConfig) -> None:
+def test_funnel_keeps_get_sse_enabled_by_default(paper_config: GatewayConfig) -> None:
     paper_config.publisher = PublisherConfig(name="tailscale", mode="funnel")
-    assert paper_config.get_sse_disabled() is True
+    assert paper_config.get_sse_disabled() is False
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"ok": True})
+
+    app = create_app(
+        paper_config,
+        api_key=TEST_API_KEY,
+        httpx_transport=httpx.MockTransport(handler),
+    )
+    with TestClient(app) as client:
+        response = client.get("/paper/mcp", headers=AUTH)
+        health = client.get("/healthz")
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
+    assert health.json()["get_sse_disabled"] is False
+    assert health.json()["version"] == "0.1.4"
+
+
+def test_explicit_disable_get_sse(paper_config: GatewayConfig) -> None:
+    paper_config.publisher = PublisherConfig(name="tailscale", mode="funnel")
+    paper_config.proxy = ProxyConfig(disable_get_sse=True)
 
     calls = {"n": 0}
 
@@ -27,30 +48,9 @@ def test_funnel_auto_disables_get_sse(paper_config: GatewayConfig) -> None:
     )
     with TestClient(app) as client:
         response = client.get("/paper/mcp", headers=AUTH)
-        health = client.get("/healthz")
     assert response.status_code == 405
     assert response.json()["error"] == "get_sse_disabled"
     assert calls["n"] == 0
-    assert health.json()["get_sse_disabled"] is True
-    assert health.json()["upstream_retries"] == 2
-
-
-def test_explicit_enable_get_sse_on_funnel(paper_config: GatewayConfig) -> None:
-    paper_config.publisher = PublisherConfig(name="tailscale", mode="funnel")
-    paper_config.proxy = ProxyConfig(disable_get_sse=False)
-
-    def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"ok": True})
-
-    app = create_app(
-        paper_config,
-        api_key=TEST_API_KEY,
-        httpx_transport=httpx.MockTransport(handler),
-    )
-    with TestClient(app) as client:
-        response = client.get("/paper/mcp", headers=AUTH)
-    assert response.status_code == 200
-    assert response.json()["ok"] is True
 
 
 def test_upstream_retries_then_succeeds(paper_config: GatewayConfig) -> None:
@@ -83,7 +83,7 @@ def test_sse_heartbeat_helper_emits_before_data() -> None:
     async def slow() -> None:
         async def gen():
             await asyncio.sleep(0.05)
-            yield b"data: {\"ok\":true}\n\n"
+            yield b'data: {"ok":true}\n\n'
 
         out = []
         async for chunk in iter_with_sse_heartbeats(gen(), interval_seconds=0.01):

@@ -12,9 +12,9 @@ name = "local"              # local | tailscale | cloudflare | ngrok
 mode = "funnel"             # tailscale only: serve | funnel
 
 # Reliability knobs for Cloud Agents + public tunnels.
-# disable_get_sse defaults to true automatically when publisher=tailscale + mode=funnel.
+# Keep GET SSE enabled (Cursor Cloud needs it). Heartbeats mitigate Funnel idle drops.
 [proxy]
-# disable_get_sse = true
+# disable_get_sse = false
 sse_heartbeat_seconds = 15
 upstream_retries = 2
 

@@ -39,12 +39,12 @@ git pull
 uv tool uninstall local-mcp-gateway || true
 uv tool install --force --reinstall .
 
-lmg --version    # expect 0.1.3+
+lmg --version    # expect 0.1.4+
 # Ctrl+C the old serve (or: pkill -f 'lmg serve')
 lmg serve --publisher tailscale --mode funnel
 
 curl -s http://127.0.0.1:8788/healthz
-# expect version 0.1.3, sse_unwrap true, get_sse_disabled true (on Funnel)
+# expect version 0.1.4, sse_unwrap true, get_sse_disabled false
 ```
 
 If `lmg --version` is still old, check `which lmg` — another install (venv / old path) may be first on `PATH`.
@@ -87,20 +87,18 @@ Each registered MCP is exposed under its name:
 
 ## Reliability (Cloud Agents + Funnel)
 
-Residual `fetch failed` / flaky MCP discovery usually comes from **long-lived idle GET SSE** through Tailscale Funnel, not from missing auth.
+Cursor Cloud MCP discovery opens a **GET SSE** stream. Returning `405` makes the namespace look "ready" with **0 tools**, so GET SSE stays **enabled by default**. Funnel idle drops are mitigated with SSE heartbeats.
 
 This gateway now:
 
-1. **Auto-disables GET SSE** when `publisher.name = "tailscale"` and `mode = "funnel"` (MCP clients get `405` and continue with POST-only Streamable HTTP).
-2. **Retries upstream** Paper/Desktop connection blips (`proxy.upstream_retries`, default `2`).
-3. **Injects SSE keepalives** when GET SSE is left enabled (`proxy.sse_heartbeat_seconds`, default `15`).
+1. **Keeps GET SSE enabled** by default (set `proxy.disable_get_sse = true` only for POST-only experiments).
+2. **Injects SSE keepalives** on idle GET streams (`proxy.sse_heartbeat_seconds`, default `15`).
+3. **Retries upstream** Paper/Desktop connection blips (`proxy.upstream_retries`, default `2`).
 4. **Gzip-compresses** larger JSON responses.
-
-Override in `lmg.toml`:
 
 ```toml
 [proxy]
-disable_get_sse = true   # force on/off; omit for auto (Funnel → true)
+# disable_get_sse = false
 sse_heartbeat_seconds = 15
 upstream_retries = 2
 ```
@@ -108,6 +106,7 @@ upstream_retries = 2
 `GET /healthz` reports `get_sse_disabled` and `upstream_retries` so you can confirm the live process.
 
 Prefer `get_basic_info` → artboard/`nodeId` → `get_tree_summary` with a low depth for huge Paper files.
+
 
 ## Publishers
 

@@ -44,8 +44,8 @@ class ProxyConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    # None = auto (disabled for Tailscale Funnel). Long-lived idle GET SSE
-    # through Funnel is a common source of Cursor "fetch failed" / discovery flaps.
+    # None = leave GET SSE enabled (Cursor Cloud discovery needs it).
+    # Set true only if you want POST-only Streamable HTTP.
     disable_get_sse: bool | None = None
     sse_heartbeat_seconds: float = 15.0
     upstream_retries: int = 2
@@ -139,9 +139,12 @@ class GatewayConfig(BaseModel):
         return self
 
     def get_sse_disabled(self) -> bool:
+        # Default False: Cursor Cloud MCP discovery opens GET SSE and treats
+        # 405 / empty tools as a hard discovery failure. Funnel idle flaps are
+        # mitigated by sse_heartbeat_seconds instead.
         if self.proxy.disable_get_sse is not None:
             return self.proxy.disable_get_sse
-        return self.publisher.name == "tailscale" and (self.publisher.mode or "funnel") == "funnel"
+        return False
 
     def server(self, name: str) -> McpServer:
         for item in self.mcp:
